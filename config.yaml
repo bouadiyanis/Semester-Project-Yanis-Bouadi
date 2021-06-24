@@ -1,0 +1,137 @@
+datasets:
+  sequence-size: 3 # must be >= 1
+  combinations: [[0, 1], [1, 2], [2, 3]]
+  ##sequence-size: 2 # must be >= 1
+  ##combinations: [[0, 1], [1, 2]]
+  kitti:
+    root-path-sync: "datasets/KITTI/sync"
+    root-path-unsync: "datasets/KITTI/extract"
+    image-width: 720
+    image-height: 57
+    crop-factors: [0, 0] # [0, 4] # top, left
+    fov-up: 3.
+    fov-down: -25.
+    max-depth: 80.
+    min-depth: 1.
+    inverse-depth: true
+    train:
+      #2011-10-03: [42]
+      2011-09-26: [39]
+      2011-09-30: [34,20]
+      
+    test:
+      2011-09-30: [18,16,27]   # 18 correspond a seq 5 de kitti
+      2011-09-26: [23]
+        
+    validation:
+      2011-09-30: [33]  
+
+    # channesl: x, y, z, remission, nx, ny ,nz, range)
+
+    mean-image: [-0.0014, 0.0043, -0.011, 0.2258, -0.0024, 0.0037, 0.3793, 0.1115]
+    std-image: [0.1269, 0.0951, 0.0108, 0.1758, 0.3436, 0.4445, 0.5664, 0.0884]
+
+    mean-imu: [-0.0685, 0.1672, 9.7967, -0., 0.0006, 0.0059]
+    std-imu: [0.8766, 0.9528, 0.3471, 0.0204, 0.0227, 0.1412]
+
+### DeepLIO Network ##############################
+deeplio:
+  dropout: 0.25
+  pretrained: false
+  model-path: ""
+  lidar-feat-net:
+    name: "lidar-feat-pointseg"
+    pretrained: false
+    model-path: ""
+    requires-grad: true
+  imu-feat-net:
+    name: #"imu-feat-rnn"
+    pretrained: false
+    model-path: ""
+    requires-grad: true
+  odom-feat-net:
+    name: "odom-feat-rnn"
+    pretrained: false
+    model-path: ""
+    requires-grad: true
+  fusion-net:
+    name: #"fusion-layer-soft"
+    requires-grad: true   # only soft-fusion has trainable params
+
+### Lidar Feature Netowrks ###########################
+# feature network simple0 with conv layers
+
+# feature network pointseg
+lidar-feat-pointseg:  # pointseg feature
+  dropout: 0.1
+  classes: ['unknown', 'object']
+  bypass: "simple"
+  fusion: add # [cat, sub, add]
+  part: "encoder" # [encoder]
+
+lidar-feat-flownet:
+  dropout: 0.
+  fusion: add # [cat, sub, add]
+
+lidar-feat-resnet:
+  dropout: 0.25
+  fusion: add # [cat, sub, add]
+
+# feature network simple0 with bypassed conv layers
+lidar-feat-simple-1:
+  dropout: 0.25
+  fusion: add # [cat, sub, add]
+  bypass: false
+
+### IMU Feature Netowrks ###########################
+# IMU Feature Netowrks
+imu-feat-fc:  # FC
+  input-size: 6  # !fixed! do not chanage
+  hidden-size: [128, 256, 512, 512, 256, 128]
+  dropout: 0.
+
+imu-feat-rnn: # RNN
+  type: "lstm"
+  input-size: 6  # !fixed! do not chanage
+  hidden-size: 128
+  num-layers: 2
+  bidirectional: true
+  dropout: 0.1
+
+### Fusion-Layer for DeepLIO Net ###########################
+fusion-layer-cat:
+  type: "cat" # [cat]
+
+fusion-layer-soft:
+  type: "soft" # [soft]
+
+### Odometry Feature Netowrks ###########################
+# odometry feature network with fully connected layers
+odom-feat-fc:
+  size: [1024, 512, 256]
+  dropout: 0.
+
+# odometry feature network with rnn-layers
+odom-feat-rnn:
+  type: "lstm"
+  hidden-size: 1024
+  num-layers: 2
+  bidirectional: true
+  dropout: 0.
+
+### Loss Configurations ###########################
+losses:
+  active: 'hwsloss'
+  hwsloss:
+    params:
+      learn: true
+      sx: 0.
+      sq: -3.
+  lwsloss:
+    params:
+      beta: 1125.
+  loss-type: "local+global" # ["local", "global", "local+global"]
+
+current-dataset: 'kitti'
+channels: [0, 1, 2, 4, 5, 6]  # channesl: x, y, z, remission, nx, ny. nz range
+optimizer: 'adam'
